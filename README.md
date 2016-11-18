@@ -10,7 +10,7 @@ Term: Fall 2016
 + [Data description](doc/readme.html)
 + Contributor's name: Tian Sheng
 + Projec title: Music & Lyric
-+ Project summary:  Contributor's name: Tian Sheng
++ Contributor's name: Tian Sheng
 + Projec title: Music Analysis: Music features and lyics
 + Project summary: 
 + Investigate the relationship between the music features and lyrics
@@ -38,7 +38,7 @@ After the training process, we get a PCA matrix, and a train.csv
 
 After the topic modeling part, we get the adjust_proportion.csv and the label_k20.csv
 
-+ Part 3:Classification
++ Part 3: Classification
 In the classification part, we get a music_rf model to predict the probablity of each topic when train.csv is given.
 
 
