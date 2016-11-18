@@ -1,5 +1,6 @@
 # Project: Words 4 Music
 ### Output folder
 
-The output directory contains analysis output, processed datasets, logs, or other processed things.
++ The Result_rank is the result of rank of words exclude the numbers
++ The Result.csv is the final rank including the numbers
 
