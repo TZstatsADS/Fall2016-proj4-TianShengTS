@@ -1,0 +1,368 @@
+---
+title: "Project4: Mustic Feature & Lyrics"
+output: word_document
+---
+
+
+# Part 1: Extracting Features from the original 2,350 songs
+(1)Define woking paths
+```{r}
+library(rhdf5)
+# define working path
+train_data_path <- "/Users/Cristina/Desktop/16 Fall/5243 ADS/Project 4/Project4_data/data/"
+test_data_path <- "/Users/Cristina/Desktop/16 Fall/5243 ADS/Project 4/Project4_data/test/"
+pca_matrix_path <- "/Users/Cristina/Desktop/16 Fall/5243 ADS/Project 4/Project4_data/lib/"
+data_output_path <- "/Users/Cristina/Desktop/16 Fall/5243 ADS/Project 4/Project4_data/output/"
+setwd(train_data_path)
+file_names <- list.files(recursive = T)
+file_num <- length(file_names)
+```
+
+(2)check whether songs in training set have 0 dim features
+```{r}
+setwd(train_data_path)
+for(i in 1:file_num){
+  data <- h5read(file_names[i], "analysis")
+  H5close()
+  if(length(data$bars_confidence) == 0){
+    print(i)
+    print("bars")
+  }
+  if(length(data$beats_confidence) == 0){
+    print(i)
+    print("beats")
+  }
+  if(length(data$sections_confidence) == 0){
+    print(i)
+    print("sections")
+  }
+  if(length(data$segments_confidence) == 0){
+    print(i)
+    print("segments")
+  }
+  if(length(data$tatums_confidence) == 0){
+    print(i)
+    print("tatums")
+  }
+}
+# output
+ab_songs <- c(715, 950, 991, 1112, 1325, 1375, 1658, 1705, 2284)
+```
+
+(3)find out median dimension of different features using training data
+```{r}
+setwd(train_data_path)
+data.bars = vector()
+data.beats = vector()
+data.sec = vector()
+data.seg = vector()
+data.tat = vector()
+n = 1
+for(i in 1:file_num){
+  if(! i %in% ab_songs){
+    data <- h5read(file_names[i], "analysis")
+    H5close()
+    data.bars[n] <- length(data$bars_confidence)
+    data.beats[n] <- length(data$beats_confidence)
+    data.sec[n] <- length(data$sections_confidence)
+    data.seg[n] <- length(data$segments_confidence)
+    data.tat[n] <- length(data$tatums_confidence)
+    n = n+1
+  }
+}
+# output
+bars_dim <- floor(median(data.bars)) #120
+beats_dim <- floor(median(data.beats)) #446
+sec_dim <- floor(median(data.sec)) #9
+seg_dim <- floor(median(data.seg)) #744
+tat_dim <- floor(median(data.tat)) #983
+```
+
+
+(4)define the 1 dimension and 2 dimension feature processing functions
+```{r}
+setwd(train_data_path)
+feature_truncate_1d <- function(ls, len){
+  if(length(ls) >= len){
+    ls <- ls[1:len]
+  }
+  else{
+    if(length(ls) == 0){
+      ls <- rep(0, len)
+    }
+    else{
+      t <- ceiling(len/length(ls))
+      ls <- rep(ls, t)
+      ls <- ls[1:len]
+    }
+  }
+  return(ls)
+}
+
+feature_truncate_2d <- function(df, ncols){
+  if(dim(df)[2] >= ncols){
+    df <- df[,1:ncols]
+  }
+  else{
+    if(dim(df)[2] == 0){
+      df <- matrix(rep(0, 12*ncols), 12, ncols)
+    }
+    else{
+      t <- ceiling(ncols/dim(df)[2])
+      df <- do.call("cbind", replicate(t, df, simplify = FALSE))
+      df <- df[,1:ncols]
+    }
+  }
+  ls <- as.vector(t(df))
+  return(ls)
+}
+```
+
+(4)convert training data
+```{r}
+setwd(train_data_path)
+train_data1 <- data.frame(matrix(ncol = 1, nrow = 0))
+train_data2 <- data.frame(matrix(ncol = 22151, nrow = 0))
+n <- 1
+for(i in 1:file_num){
+  if(! i %in% ab_songs){
+    data <- h5read(file_names[i], "analysis")
+    H5close()
+    song_id <- substring(file_names[i], nchar(file_names[i])-20, nchar(file_names[i])-3)
+    bars_s <- feature_truncate_1d(data$bars_start, 120)
+    beats_s <- feature_truncate_1d(data$beats_start, 446)
+    sections_s <- feature_truncate_1d(data$sections_start, 9)
+    segments_s <- feature_truncate_1d(data$segments_start, 744)
+    segments_l_m <- feature_truncate_1d(data$segments_loudness_max, 744)
+    segments_l_m_t <- feature_truncate_1d(data$segments_loudness_max_time, 744)
+    segments_l_s <- feature_truncate_1d(data$segments_loudness_start, 744)
+    segments_p <- feature_truncate_2d(data$segments_pitches, 744)
+    segments_t <- feature_truncate_2d(data$segments_timbre, 744)
+    tatums_s <- feature_truncate_1d(data$tatums_start, 744)
+    new_data_row <- c(bars_s, beats_s, sections_s, segments_s, segments_l_m, segments_l_m_t,
+                      segments_l_s, segments_p, segments_t, tatums_s)
+    train_data1[n,] <- song_id
+    train_data2[n,] <- new_data_row
+    n <- n+1
+  }
+} 
+
+
+
+### find columns in training data that have constant values (otherwise PCA won't work)
+for(i in 1:22151){
+  if(sum(train_data2[,i]==train_data2[1,i])==2341){
+    print(i)
+  }
+}
+ab_columns <- c(567, 576)
+train_data2 <- cbind(train_data2[,1:566], train_data2[,568:575], train_data2[,577:22151])
+train_data <- cbind(train_data1, train_data2)
+write.csv(train_data, file = paste(data_output_path, "train_raw.csv", sep=""))
+```
+
+(5)train PCA model using training data 
+```{r}
+setwd(train_data_path)
+pca <- prcomp(train_data2, center=TRUE, scale=TRUE)
+cumdev <- cumsum(pca$sdev) / sum(pca$sdev)
+cumdev_0.9 <- cumdev <= 0.9
+n <- sum(cumdev_0.9) + 1
+pca_matrix <- pca$rotation[,1:n]
+save(pca_matrix, file = paste(pca_matrix_path, "/pca_loading.rda", sep=""))
+train_data_pca <- as.matrix(train_data2) %*% pca_matrix
+train_data_pca <- cbind(train_data1, train_data_pca)
+write.csv(train_data_pca, file = paste(data_output_path, "/train.csv", sep=""))
+```
+
+After the training process, we get a PCA matrix, and a train.csv
+
+# Part 2 Topic Modeling
+load the required packages:
+```{r}
+require(RTextTools)
+library(topicmodels)
+library(rhdf5)
+```
+
+(1)Define a string convert function to convert the strings in lyr.r
+```{r}
+string_convert <- function(lyr) {
+        result <- data.frame()
+        for (row in 1:(nrow(lyr))) {
+                words <- NULL
+                for (col in 2:(ncol(lyr)-1)) {
+                        if (lyr[row,col] != 0) {
+                                kw <- rep(colnames(lyr)[col],lyr[row,col])
+                                kw <- paste(kw, collapse=' ')
+                                words <- paste(words, kw)
+                        }
+                }
+                result[row,1] <- words
+        }
+        return(result)
+}
+```
+
+(2)Define a matrix convert to convert the strings into matrix
+```{r}
+matrix_convert <- function(text_string, language) {
+        text <- as.vector(text_string)
+        matx <- create_matrix(text_string, language = language)
+        rowTotals <- apply(matx , 1, sum)
+        matx.new   <- matx[rowTotals> 0, ]
+        return(matx.new)
+}
+```
+
+(3) Using the LDA to do 20-topic modeling and assign labels to each song
+```{r}
+#lode the lyrics
+load("/Users/Cristina/Desktop/16 Fall/5243 ADS/Project 4/Project4_data/lyr.RData")
+md <- string_convert(lyr)
+matx <- matrix_convert(md,'english')
+k <- 5
+lda <- LDA(matx, 20)
+output_topics <- terms(lda,100)
+output_label <- topics(lda)
+write.csv(output_label, file = paste(data_output_path, "label_k20.csv", sep=""))
+```
+
+(4) Calculate the probability matrix each word appears in each topic
+```{r}
+# Manually adjusted probabilities for all terms
+adjust_prob <- function(lyr, label) {
+        new_lyr <- lyr[-237,]
+        df <- cbind(label, new_lyr)
+        result <- data.frame(matrix(seq(20), nrow = max(as.numeric(label)), ncol = 5000))
+        for (lb in 1:max(as.numeric(label))) {
+                holder <- subset(df, df[,1] == lb)
+                holder <- colSums(holder[,3:5002])
+                tot <- sum(holder)
+                prop <- holder / tot
+                result[lb,] <- prop
+        }
+        result <- t(result)
+        result <- cbind(colnames(new_lyr)[2:5001], result)
+        result <- result[-c(2,3,6:30),]
+        return(result)
+}
+
+write.csv(adjust_prob(lyr,output_label),file = paste(data_output_path, "adjust_proportion_20.csv", sep=""))
+```
+
+After the topic modeling part, we get the adjust_proportion.csv and the label_k20.csv
+
+# Part 3 Classification
+```{r}
+# suppose we have our "feature matrix" with dimension 2350 * features
+# and we have our "clusters", which is obtained based on topic clustering
+# then we have a label (cluster) for each data point (music)
+# random forest
+# now we will use random forest to do multiple classification
+setwd(data_output_path)
+music_feature<-read.csv("train.csv")
+music_label<-read.csv("label_k20.csv")
+music_feature<-music_feature[-237,]
+music_feature<-music_feature[,-c(1,2)]
+music_label<-music_label[-c(714,949,990,1111,1324,1374,1657,1704,2283),]
+music_label<-factor(music_label[,2])
+set.seed(123)
+train_sample<-sample(1:2340,2000)
+music_feature_train<-music_feature[train_sample,]
+music_label_train<-music_label[train_sample]
+music_feature_test<-music_feature[-train_sample,]
+library(randomForest)
+music_rf<-randomForest(music_feature_train,music_label_train,importance=T,proximity=T)
+music_rf_pre<-predict(music_rf,music_feature_test,type="vote",norm.votes=T)
+```
+In the classification part, we get a music_rf model to predict the probablity of each topic when train.csv is given.
+
+# Part 4 Rank
+
+(1) Convert the test data and apply the PCA matrix on test data
+```{r}
+### convert test data ###
+setwd(test_data_path)
+file_names <- list.files(recursive = T)
+file_num <- length(file_names)
+test_data1 <- data.frame(matrix(ncol = 1, nrow = 0))
+test_data2 <- data.frame(matrix(ncol = 22151, nrow = 0))
+n <- 1
+for(i in 1:file_num){
+  data <- h5read(file_names[i], "analysis")
+  H5close()
+  song_id <- substring(file_names[i], nchar(file_names[i])-20, nchar(file_names[i])-3)
+  bars_s <- feature_truncate_1d(data$bars_start, 120)
+  beats_s <- feature_truncate_1d(data$beats_start, 446)
+  sections_s <- feature_truncate_1d(data$sections_start, 9)
+  segments_s <- feature_truncate_1d(data$segments_start, 744)
+  segments_l_m <- feature_truncate_1d(data$segments_loudness_max, 744)
+  segments_l_m_t <- feature_truncate_1d(data$segments_loudness_max_time, 744)
+  segments_l_s <- feature_truncate_1d(data$segments_loudness_start, 744)
+  segments_p <- feature_truncate_2d(data$segments_pitches, 744)
+  segments_t <- feature_truncate_2d(data$segments_timbre, 744)
+  tatums_s <- feature_truncate_1d(data$tatums_start, 744)
+  new_data_row <- c(bars_s, beats_s, sections_s, segments_s, segments_l_m, segments_l_m_t,
+                    segments_l_s, segments_p, segments_t, tatums_s)
+  test_data1[n,] <- song_id
+  test_data2[n,] <- new_data_row
+  n <- n+1
+} 
+test_data2 <- cbind(test_data2[,1:566], test_data2[,568:575], test_data2[,577:22151])
+test_data <- cbind(test_data1, test_data2)
+#write.csv(test_data, file = paste(data_output_path, "/test_raw.csv", sep=""))
+
+
+### apply PCA model on test data ###
+load(paste(pca_matrix_path, "/pca_loading.rda", sep=""))
+test_data_pca <- as.matrix(test_data2) %*% pca_matrix
+test_data_pca <- cbind(test_data1, test_data_pca)
+write.csv(test_data_pca, file = paste(data_output_path, "/test.csv", sep=""))
+```
+
+
+(2)Using the Random Forest model to classify the features 
+```{r}
+# test
+music_feature<-read.csv("/Users/Cristina/Desktop/16 Fall/5243 ADS/Project 4/Project4_data/output/test.csv")
+music_rf_pre<-predict(music_rf,music_feature,type="vote",norm.votes=T)
+write.csv(music_rf_pre,file = paste(data_output_path, "prediction_100.csv", sep=""))
+```
+
+(3)Using the adjust_proportion_20.csv and predition_100 to calculate the probability that each word may appear in one song, give the final rank 
+```{r}
+prob_yq<-read.csv("/Users/Cristina/Desktop/16 Fall/5243 ADS/Project 4/Project4_data/output/adjust_proportion_20.csv")
+prob_test<-read.csv("/Users/Cristina/Desktop/16 Fall/5243 ADS/Project 4/Project4_data/output/prediction_100.csv")
+
+name=prob_yq[,2]
+name<-as.character(name)
+
+prob_yq<-as.matrix(prob_yq[,-c(1,2)])
+prob_test<-as.matrix(prob_test[,-1])
+
+result<-prob_test%*%t(prob_yq)
+colnames(result)=name
+
+for (i in 1:nrow(result)){
+  result[i,]=rank(-result[i,])
+}
+
+write.csv(result,file=paste(data_output_path, "result_rank.csv", sep=""))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
