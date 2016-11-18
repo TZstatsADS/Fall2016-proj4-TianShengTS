@@ -2,7 +2,7 @@
 
 ### [Project Description](doc/Project4_desc.md)
 
-![image](https://www.google.com/search?q=music&rlz=1C5CHFA_enUS655US655&espv=2&biw=1280&bih=586&source=lnms&tbm=isch&sa=X&ved=0ahUKEwjGuubepLPQAhVM6CYKHUJlDSMQ_AUICCgD#imgrc=vSP7o3NreHZMnM%3A)
+![image](http://www.drodd.com/images15/music9.jpg)
 
 Term: Fall 2016
 
