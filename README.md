@@ -1,4 +1,4 @@
-# Project: Words 4 Music
+# Project: Music & Lyrics
 
 ### [Project Description](doc/Project4_desc.md)
 
