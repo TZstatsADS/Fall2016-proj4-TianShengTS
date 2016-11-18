@@ -2,7 +2,7 @@
 
 ### [Project Description](doc/Project4_desc.md)
 
-![image](http://cdn.newsapi.com.au/image/v1/f7131c018870330120dbe4b73bb7695c?width=650)
+![image](https://www.google.com/search?q=music&rlz=1C5CHFA_enUS655US655&espv=2&biw=1280&bih=586&source=lnms&tbm=isch&sa=X&ved=0ahUKEwjGuubepLPQAhVM6CYKHUJlDSMQ_AUICCgD#imgrc=vSP7o3NreHZMnM%3A)
 
 Term: Fall 2016
 
@@ -19,7 +19,7 @@ Term: Fall 2016
 + Predict the rank of 5000 words  in the dictionary when given new music features
 
 ## Project Process
-+ Descriptions are in the project.rmd file in lib
+   Descriptions are in the project.rmd file in lib
 # Part 1: Extracting Features from the original 2,350 songs
 (1)Define woking paths
 (2)check whether songs in training set have 0 dim features
@@ -30,7 +30,7 @@ Term: Fall 2016
    After the training process, we get a PCA matrix, and a train.csv
 
 
-# Part 2:Topic Modeling
+# Part 2: Topic Modeling
 (1)Define a string convert function to convert the strings in lyr.r
 (2)Define a matrix convert to convert the strings into matrix
 (3)Using the LDA to do 20-topic modeling and assign labels to each song
