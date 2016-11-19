@@ -48,7 +48,16 @@ Term: Fall 2016
 + (2)Using the Random Forest model to classify the features 
 + (3)Using the adjust_proportion_20.csv and predition_100 to calculate the probability that each word may appear in one song, give the final rank 
 
-	
+# Part 5: Association Rule
++ (1)Construct 6 new variables
++ (2)Calculate the median, variance, min and max  using 6 variables
+* Duration: Max value from Segments_start
+* Pace: Calculate the mean of difference from 4 variables: bars, beats, segment, tatums
+* Sections: Subtract from diff(sections_start)/duration
+* Loudness: Subtract from Segments_loudness_max
+* Pitches: Subtract from Segments_pitches
+* Timbre: Subtract from Segments_timbre	
++ (3)Use the assciation rule to find the relationship between topics and music features
 Following [suggestions](http://nicercode.github.io/blog/2013-04-05-projects/) by [RICH FITZJOHN](http://nicercode.github.io/about/#Team) (@richfitz). This folder is orgarnized as follows.
 
 ```
